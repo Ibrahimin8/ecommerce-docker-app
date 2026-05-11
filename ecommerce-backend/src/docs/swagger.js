@@ -9,9 +9,13 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: 'http://localhost:5003',
-      description: 'Development Server',
+      url: 'https://ecommerce-docker-app.onrender.com',
+      description: 'Production Server',
     },
+    {
+        url: 'http://localhost:5003',
+        description: 'Local development server',
+      },
   ],
   components: {
     securitySchemes: {
