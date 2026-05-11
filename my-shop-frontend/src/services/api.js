@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:5003/api', // Match your backend port
+  // Use the production URL you just finalized
+  baseURL: 'https://ecommerce-docker-app.onrender.com/api', 
+  withCredentials: true, // Important for handling cookies/sessions if needed
 });
 
 // Add a request interceptor to attach the JWT token

@@ -5,8 +5,9 @@ import { ShoppingBag, Star } from 'lucide-react';
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  // BASE URL for your backend
-  const backendUrl = 'http://localhost:5003';
+  // --- UPDATED URL LOGIC ---
+  // This will use your Render URL in production and localhost during development
+  const backendUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5003';
 
   // Handle image pathing (Local storage vs External URL)
   const imageSrc = product.images?.startsWith('/uploads/') 
