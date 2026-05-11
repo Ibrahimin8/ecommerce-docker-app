@@ -28,22 +28,33 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS Protection for Production and Dev
+// --- UPDATED CORS CONFIGURATION ---
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://ecommerce-docker-app.onrender.com'
+  'https://ecommerce-docker-app.onrender.com',
+  // Your specific Vercel deployment URL
+  'https://ecommerce-docker-mkpvac516-ibrahims-projects-5e7c8375.vercel.app',
+  // Your main Vercel production URL (if different)
+  'https://ecommerce-docker-app.vercel.app' 
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in our list OR if it's a Vercel preview branch
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app');
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.log('CORS blocked for origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
