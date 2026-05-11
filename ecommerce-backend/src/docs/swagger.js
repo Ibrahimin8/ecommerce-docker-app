@@ -13,9 +13,9 @@ const swaggerDefinition = {
       description: 'Production Server',
     },
     {
-        url: 'http://localhost:5003',
-        description: 'Local development server',
-      },
+      url: 'http://localhost:5003',
+      description: 'Local development server',
+    },
   ],
   components: {
     securitySchemes: {
@@ -82,7 +82,6 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Email verified' } }
       }
     },
-
     // --- PRODUCTS ---
     '/api/products': {
       get: {
@@ -126,7 +125,6 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Product details' } }
       }
     },
-
     // --- CART ---
     '/api/cart': {
       get: {
@@ -175,7 +173,6 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Cart cleared' } }
       }
     },
-
     // --- ORDERS ---
     '/api/orders': {
       post: {
@@ -239,7 +236,6 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Stats data' } }
       }
     },
-
     // --- REVIEWS ---
     '/api/reviews': {
       post: {
@@ -277,7 +273,7 @@ const swaggerDefinition = {
 
 const options = {
   swaggerDefinition,
-  apis: [], // Keep empty because we defined paths manually above
+  apis: [], 
 };
 
 module.exports = swaggerJSDoc(options);

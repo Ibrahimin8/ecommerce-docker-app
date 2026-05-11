@@ -6,8 +6,9 @@ const morgan = require('morgan');
 const swaggerSpec = require('./src/docs/swagger');
 const swaggerUi = require('swagger-ui-express');
 
-// Import Database models
+// Import Configs
 const db = require('./src/models');
+const redisClient = require('./src/config/redis');
 
 // Import Routes
 const authRoutes = require('./src/routes/authRoutes');
@@ -27,8 +28,20 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// CORS Protection for Production and Dev
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://ecommerce-docker-app.onrender.com'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', 
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -37,6 +50,11 @@ app.use(cors({
 app.use(morgan('dev')); 
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
+
+// Landing Route
+app.get('/', (req, res) => {
+  res.send('🚀 E-Commerce Production API is Running! View Docs at /api-docs');
+});
 
 // --- ROUTES ---
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -50,7 +68,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/uploads', express.static('uploads'));
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Server is running' });
+  res.status(200).json({ status: 'OK', message: 'Production system healthy' });
 });
 
 app.use(errorHandler);
@@ -58,21 +76,29 @@ app.use(errorHandler);
 // --- SERVER INITIALIZATION ---
 const PORT = process.env.PORT || 5003; 
 
-db.sequelize.authenticate()
-  .then(() => {
-    console.log('✅ Database connected successfully.');
-    
-    // CHANGE: Set alter: true while you are still building models
-    // This adds new columns to Neon without deleting your data
-    return db.sequelize.sync({ alter: true }); 
-  })
-  .then(() => {
-    console.log('✅ Database models synced.');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`🚀 Swagger UI available at http://localhost:${PORT}/api-docs`);
-    });
-  })
-  .catch(err => {
-    console.error('❌ Unable to connect to the database:', err);
-  });
+const startServer = async () => {
+    try {
+        // 1. Connect to Neon PostgreSQL
+        await db.sequelize.authenticate();
+        console.log('✅ Database connected (Neon)');
+        await db.sequelize.sync({ alter: true });
+        console.log('✅ Models synced');
+
+        // 2. Connect to Upstash Redis
+        if (!redisClient.isOpen) {
+            await redisClient.connect();
+        }
+        console.log('✅ Redis connected (Upstash)');
+
+        // 3. Listen
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🚀 Production URL: https://ecommerce-docker-app.onrender.com`);
+            console.log(`📖 Documentation: https://ecommerce-docker-app.onrender.com/api-docs`);
+        });
+    } catch (err) {
+        console.error('❌ Server failed to start:', err);
+        process.exit(1);
+    }
+};
+
+startServer();
