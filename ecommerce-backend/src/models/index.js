@@ -5,16 +5,16 @@ const path = require('path');
 const Sequelize = require('sequelize');
 const process = require('process');
 const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/database.js')[env];
-const db = {};
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
-}
+/**
+ * PATH EXPLAINED:
+ * We are in: src/models/
+ * We need: config/database.js
+ * So we go up two levels (../../) and then into 'config/database'
+ */
+const { sequelize } = require('../config/database'); 
+
+const db = {};
 
 // 1. Read all files in the models directory and import them
 fs
@@ -28,12 +28,12 @@ fs
     );
   })
   .forEach(file => {
+    // Pass the fixed sequelize instance into each model
     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
     db[model.name] = model;
   });
 
-// 2. IMPORTANT: Run the associate functions
-// This is what makes "include: [Category]" work in your controllers!
+// 2. Set up associations (Foreign Keys / Relationships)
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);

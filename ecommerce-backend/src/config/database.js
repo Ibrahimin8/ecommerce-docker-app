@@ -1,48 +1,45 @@
 const { Sequelize } = require('sequelize');
+const pg = require('pg'); // Explicitly require the pg driver
 const dotenv = require('dotenv');
-const { log } = require('node:console');
 
 dotenv.config();
 
-// 1. Define the config object (CLI will look for 'development')
-const dbConfig = {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL missing from .env');
+    process.exit(1);
+}
+
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    //logging: process.env.NODE_ENV === 'development' ? console.log : false,
-    logging: false, // Disable logging for cleaner output
+    dialectModule: pg, // This forces Sequelize to use the modern pg driver
+    logging: false,
+    dialectOptions: {
+        ssl: {
+            require: true,
+            rejectUnauthorized: false 
+        }
+    },
     pool: {
         max: 5,
         min: 0,
         acquire: 30000,
         idle: 10000
     }
-};
-
-// 2. Initialize the instance (For your Express App)
-const sequelize = new Sequelize(
-    dbConfig.database,
-    dbConfig.username,
-    dbConfig.password,
-    dbConfig
-);
+});
 
 const testConnection = async () => {
     try {
         await sequelize.authenticate();
-        console.log('PostgreSQL connection established successfully.');
+        console.log('--------------------------------------------------');
+        console.log('✅ SUCCESS: Connected to Neon PostgreSQL ⚡');
+        console.log('--------------------------------------------------');
     } catch (error) {
-        console.error('Unable to connect to the database:', error);
+        console.error('--------------------------------------------------');
+        console.error('❌ DATABASE ERROR:', error.message);
+        console.log('Hint: Ensure Connection Pooling is OFF in Neon.');
+        console.log('--------------------------------------------------');
         process.exit(1);
     }
 };
 
-// 3. Export both! 'development' is for the CLI, others are for your code.
-module.exports = { 
-    sequelize, 
-    testConnection, 
-    development: dbConfig 
-};
+module.exports = { sequelize, testConnection };
