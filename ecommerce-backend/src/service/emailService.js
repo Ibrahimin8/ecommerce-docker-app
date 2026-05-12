@@ -1,53 +1,42 @@
-const nodemailer = require('nodemailer');
-
-// Setup the connection with IPv4 forcing and timeout protections
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Use STARTTLS for port 587
-  auth: {
-    user: process.env.EMAIL_USER, // Your gmail
-    pass: process.env.EMAIL_PASS   // Your 16-character App Password
-  },
-  // --- CRITICAL NETWORK FIXES ---
-  connectionTimeout: 10000, // 10 seconds (Prevents the 121s hang)
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  dnsVapi: 4 // Forces the connection to use IPv4 only (Fixes ENETUNREACH)
-});
+const { Resend } = require('resend');
 
 /**
- * The function your AuthController will call
+ * Initialize Resend with your API Key
+ * Note: No need for SMTP ports or 'family: 4' settings here.
  */
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 exports.sendVerificationEmail = async (email, token) => {
-  // Use the production frontend URL from your env
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-  const mailOptions = {
-    from: '"TECHSHOP" <noreply@techshop.com>',
-    to: email,
-    subject: 'Confirm your Email Address',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 15px;"> 
-        <h2 style="color: #2563eb;">Welcome to TECHSHOP!</h2> 
-        <p>Thank you for signing up. Please verify your email by clicking the button below:</p> 
-        <div style="text-align: center; margin: 30px 0;"> 
-          <a href="${verificationUrl}" style="background-color: #2563eb; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Email Address</a> 
-        </div> 
-        <p style="font-size: 12px; color: #666;">If the button does not work, copy and paste this link: <br/> 
-          <a href="${verificationUrl}" style="color: #2563eb;">${verificationUrl}</a>
-        </p> 
-      </div>
-    `
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent:', info.messageId);
-    return info;
-  } catch (error) {
-    // Log the error but don't let it crash the registration process
-    console.error('❌ Nodemailer Error:', error.message);
-    throw error;
+    const { data, error } = await resend.emails.send({
+      // While in testing/onboarding, you MUST use this 'from' address
+      from: 'TechShop <onboarding@resend.dev>', 
+      to: email,
+      subject: 'Confirm your Email Address',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 15px;">
+          <h2 style="color: #2563eb;">Welcome to TECHSHOP!</h2>
+          <p>Click the button below to verify your account and start shopping:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="background-color: #2563eb; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Email Address</a>
+          </div>
+          <p style="font-size: 12px; color: #666;">
+            If the button fails, copy this link: <br/>
+            <a href="${verificationUrl}">${verificationUrl}</a>
+          </p>
+        </div>
+      `
+    });
+
+    if (error) {
+      console.error('❌ Resend API Error:', error);
+      return;
+    }
+
+    console.log('✅ Email sent successfully via Resend API ID:', data.id);
+  } catch (err) {
+    console.error('❌ Unexpected Email Error:', err.message);
   }
 };
