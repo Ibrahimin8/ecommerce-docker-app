@@ -5,8 +5,25 @@ const bcrypt = require('bcryptjs');
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     static associate(models) {
-      User.hasOne(models.Cart, { foreignKey: 'userId', as: 'Cart' });
-      User.hasMany(models.Order, { foreignKey: 'userId', as: 'Orders' });
+      // When a user is deleted, delete their Cart, Orders, and Reviews
+      User.hasOne(models.Cart, { 
+        foreignKey: 'userId', 
+        as: 'Cart',
+        onDelete: 'CASCADE',
+        hooks: true 
+      });
+      User.hasMany(models.Order, { 
+        foreignKey: 'userId', 
+        as: 'Orders',
+        onDelete: 'CASCADE',
+        hooks: true 
+      });
+      User.hasMany(models.Review, { 
+        foreignKey: 'userId', 
+        as: 'reviews', // Added reviews association
+        onDelete: 'CASCADE',
+        hooks: true 
+      });
     }
   }
   User.init({
@@ -29,7 +46,6 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'user',
       validate: { isIn: [['user', 'admin']] }
     },
-    // --- NEW FIELDS FOR EMAIL VERIFICATION ---
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
@@ -42,7 +58,6 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'User',
     hooks: {
-      // Automatically hashes password before saving to DB
       beforeCreate: async (user) => {
         if (user.password) {
           const salt = await bcrypt.genSalt(10);
