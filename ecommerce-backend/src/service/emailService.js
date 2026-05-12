@@ -1,17 +1,26 @@
 const nodemailer = require('nodemailer');
 
-// Setup the connection to Gmail
+// Setup the connection with IPv4 forcing and timeout protections
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Use STARTTLS for port 587
   auth: {
     user: process.env.EMAIL_USER, // Your gmail
-    pass: process.env.EMAIL_PASS  // Your 16-character App Password
-  }
+    pass: process.env.EMAIL_PASS   // Your 16-character App Password
+  },
+  // --- CRITICAL NETWORK FIXES ---
+  connectionTimeout: 10000, // 10 seconds (Prevents the 121s hang)
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
+  dnsVapi: 4 // Forces the connection to use IPv4 only (Fixes ENETUNREACH)
 });
 
-// The function your AuthController will call
+/**
+ * The function your AuthController will call
+ */
 exports.sendVerificationEmail = async (email, token) => {
-  // We use backticks (`) so we can use ${variable} syntax
+  // Use the production frontend URL from your env
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
   const mailOptions = {
@@ -32,5 +41,13 @@ exports.sendVerificationEmail = async (email, token) => {
     `
   };
 
-  return transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Verification email sent:', info.messageId);
+    return info;
+  } catch (error) {
+    // Log the error but don't let it crash the registration process
+    console.error('❌ Nodemailer Error:', error.message);
+    throw error;
+  }
 };
