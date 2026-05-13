@@ -5,28 +5,33 @@ import { ShoppingBag, Star } from 'lucide-react';
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  const getBackendBaseUrl = () => {
-    // FORCING RENDER URL IF ON VERCEL
-    if (window.location.hostname.includes('vercel.app')) {
-      return 'https://ecommerce-docker-app.onrender.com';
+  // --- THE OVERRIDE SOLUTION ---
+  const getBackendUrl = () => {
+    const hostname = window.location.hostname;
+    
+    // If you are working on your computer (WSL2/Docker)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5003';
     }
-    // FALLBACK TO LOCALHOST FOR WSL2
-    return (import.meta.env.VITE_BASE_URL || 'http://localhost:5003').replace(/\/$/, "");
+    
+    // FOR EVERYONE ELSE (Vercel Production/Preview)
+    // We hardcode this to ensure it NEVER requests http://localhost
+    return 'https://ecommerce-docker-app.onrender.com';
   };
 
-  const backendUrl = getBackendBaseUrl();
+  const backendUrl = getBackendUrl();
 
   const getImageSource = () => {
     if (!product.images) return 'https://placehold.co/300';
     if (product.images.startsWith('http')) return product.images;
 
-    // Standardize the path to /uploads/filename.jpg
-    let imagePath = product.images.replace(/^(\.\/|\.\.\/|\/)+/, "");
-    if (!imagePath.startsWith('uploads/')) {
-      imagePath = `uploads/${imagePath}`;
-    }
+    // Clean the string (removes leading slashes or dots)
+    const cleanPath = product.images.replace(/^(\.\/|\.\.\/|\/)+/, "");
+    
+    // Ensure the path is exactly: uploads/filename.jpg
+    const finalPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
 
-    return `${backendUrl}/${imagePath}`;
+    return `${backendUrl}/${finalPath}`;
   };
 
   const imageSrc = getImageSource();
@@ -40,9 +45,13 @@ const ProductCard = ({ product }) => {
           alt={product.name}
           crossOrigin="anonymous" 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => { e.target.src = 'https://placehold.co/300'; }}
+          onError={(e) => {
+            // If Render has deleted the temporary file, show a placeholder
+            e.target.src = 'https://placehold.co/300';
+          }}
         />
       </div>
+      
       <div className="p-4">
         <div className="flex justify-between items-start mb-1">
           <h3 className="font-bold text-gray-800 text-lg truncate">{product.name}</h3>
@@ -50,7 +59,9 @@ const ProductCard = ({ product }) => {
             <Star size={14} fill="currentColor" className="mr-1" /> 4.5
           </span>
         </div>
+        
         <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+        
         <div className="flex justify-between items-center">
           <span className="text-xl font-black text-gray-900">${formattedPrice}</span>
           <button 
