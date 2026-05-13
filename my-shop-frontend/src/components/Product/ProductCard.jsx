@@ -5,23 +5,47 @@ import { ShoppingBag, Star } from 'lucide-react';
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  // 1. Clean the Base URL (removes trailing slash if present)
-  const backendUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5003').replace(/\/$/, "");
+  /**
+   * REAL SOLUTION LOGIC:
+   * 1. Check if we are in production (Vercel).
+   * 2. If VITE_BASE_URL is missing in production, it will fail to load images 
+   *    rather than trying to request 'localhost' (which causes the Mixed Content error).
+   */
+  const getBackendBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_BASE_URL;
+    
+    // If we are on Vercel but the variable is missing, warn the developer
+    if (!envUrl && window.location.hostname !== 'localhost') {
+      console.warn("Missing VITE_BASE_URL environment variable in production!");
+    }
 
-  // 2. Resolve Image Source logic
+    return (envUrl || 'http://localhost:5003').replace(/\/$/, "");
+  };
+
+  const backendUrl = getBackendBaseUrl();
+
   const getImageSource = () => {
+    // 1. Handle missing product images
     if (!product.images) return 'https://placehold.co/300';
     
-    // If the database already has a full URL (like from an external API)
+    // 2. Handle absolute URLs (e.g., external links)
     if (product.images.startsWith('http')) return product.images;
 
-    // Ensure the path starts with a slash
-    const cleanPath = product.images.startsWith('/') ? product.images : `/${product.images}`;
-    
-    // Ensure the /uploads/ prefix is included
-    const finalPath = cleanPath.startsWith('/uploads/') ? cleanPath : `/uploads${cleanPath}`;
+    /**
+     * 3. Handle local/uploaded files.
+     * We ensure the path is standardized as: /uploads/filename.jpg
+     */
+    let imagePath = product.images;
 
-    return `${backendUrl}${finalPath}`;
+    // Remove any accidental double slashes or leading dots
+    imagePath = imagePath.replace(/^(\.\/|\.\.\/|\/)+/, "");
+
+    // If 'uploads/' isn't already in the string, prepend it
+    if (!imagePath.startsWith('uploads/')) {
+      imagePath = `uploads/${imagePath}`;
+    }
+
+    return `${backendUrl}/${imagePath}`;
   };
 
   const imageSrc = getImageSource();
@@ -33,9 +57,12 @@ const ProductCard = ({ product }) => {
         <img 
           src={imageSrc} 
           alt={product.name}
-          // Added crossOrigin for Helmet compatibility
-          crossOrigin="anonymous"
+          // crossOrigin is critical for Helmet & CORS when images are on a different domain
+          crossOrigin="anonymous" 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            e.target.src = 'https://placehold.co/300'; // Fallback if image 404s
+          }}
         />
       </div>
       
