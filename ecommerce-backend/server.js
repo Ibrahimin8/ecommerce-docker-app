@@ -60,7 +60,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // --- STATIC FILES (FIXED WITH ABSOLUTE PATH) ---
 // This ensures the server finds the 'uploads' folder regardless of environment
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Landing Route
 app.get('/', (req, res) => {
