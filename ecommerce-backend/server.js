@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path'); // Added path module for absolute paths
 const swaggerSpec = require('./src/docs/swagger');
 const swaggerUi = require('swagger-ui-express');
 
@@ -32,18 +33,13 @@ app.use(helmet({
 const allowedOrigins = [
   'http://localhost:5173',
   'https://ecommerce-docker-app.onrender.com',
-  // Your specific Vercel deployment URL
-  'https://ecommerce-docker-mkpvac516-ibrahims-projects-5e7c8375.vercel.app',
-  // Your main Vercel production URL (if different)
   'https://ecommerce-docker-app.vercel.app' 
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     
-    // Check if the origin is in our list OR if it's a Vercel preview branch
     const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app');
 
     if (isAllowed) {
@@ -62,6 +58,10 @@ app.use(morgan('dev'));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
+// --- STATIC FILES (FIXED WITH ABSOLUTE PATH) ---
+// This ensures the server finds the 'uploads' folder regardless of environment
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Landing Route
 app.get('/', (req, res) => {
   res.send('🚀 E-Commerce Production API is Running! View Docs at /api-docs');
@@ -76,7 +76,6 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/uploads', express.static('uploads'));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Production system healthy' });
