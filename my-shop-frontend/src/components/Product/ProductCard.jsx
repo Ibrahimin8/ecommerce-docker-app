@@ -5,15 +5,26 @@ import { ShoppingBag, Star } from 'lucide-react';
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  // --- UPDATED URL LOGIC ---
-  // This will use your Render URL in production and localhost during development
-  const backendUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5003';
+  // 1. Clean the Base URL (removes trailing slash if present)
+  const backendUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5003').replace(/\/$/, "");
 
-  // Handle image pathing (Local storage vs External URL)
-  const imageSrc = product.images?.startsWith('/uploads/') 
-    ? `${backendUrl}${product.images}` 
-    : (product.images || 'https://placehold.co/300');
+  // 2. Resolve Image Source logic
+  const getImageSource = () => {
+    if (!product.images) return 'https://placehold.co/300';
+    
+    // If the database already has a full URL (like from an external API)
+    if (product.images.startsWith('http')) return product.images;
 
+    // Ensure the path starts with a slash
+    const cleanPath = product.images.startsWith('/') ? product.images : `/${product.images}`;
+    
+    // Ensure the /uploads/ prefix is included
+    const finalPath = cleanPath.startsWith('/uploads/') ? cleanPath : `/uploads${cleanPath}`;
+
+    return `${backendUrl}${finalPath}`;
+  };
+
+  const imageSrc = getImageSource();
   const formattedPrice = product.price ? parseFloat(product.price).toFixed(2) : '0.00';
 
   return (
@@ -22,6 +33,8 @@ const ProductCard = ({ product }) => {
         <img 
           src={imageSrc} 
           alt={product.name}
+          // Added crossOrigin for Helmet compatibility
+          crossOrigin="anonymous"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
       </div>
