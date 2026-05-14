@@ -50,15 +50,18 @@ exports.createProduct = async (req, res) => {
 
     const product = await Product.create({
       name,
-      price,
+      // Use parseFloat and parseInt to ensure the database gets numbers, not strings
+      price: parseFloat(price), 
       description,
-      stock,
-      categoryId,
-      images: imageUrl // This will now be: https://res.cloudinary.com/...
+      stock: parseInt(stock),
+      categoryId: parseInt(categoryId),
+      images: imageUrl 
     });
 
     res.status(201).json(product);
   } catch (error) {
+    // This will help you see if the error is database-related (e.g., missing categoryId)
+    console.error("Backend Error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
