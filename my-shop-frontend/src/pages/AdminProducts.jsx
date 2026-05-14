@@ -54,8 +54,8 @@ const AdminProducts = () => {
     data.append('categoryId', formData.categoryId);
     
     if (selectedFile) {
-      // CRITICAL: Must match your backend's upload.single('images')
-      data.append('images', selectedFile); 
+      // CRITICAL: Must match your backend's upload.single('image')
+      data.append('image', selectedFile); 
     } else if (formData.imageUrl) {
       data.append('imageUrl', formData.imageUrl); 
     }

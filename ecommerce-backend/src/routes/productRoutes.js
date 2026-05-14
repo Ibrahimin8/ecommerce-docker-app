@@ -6,7 +6,7 @@ const upload = require('../middleware/uploadMiddleware');
 
 // 1. UPDATED: Changed 'image' to 'images' to match frontend data.append('images', ...)
 // 2. IMPORTANT: Removed the duplicate POST route at the bottom.
-router.post('/', verifyToken, isAdmin, upload.single('images'), productController.createProduct);
+router.post('/', verifyToken, isAdmin, upload.single('image'), productController.createProduct);
 
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProductById);
