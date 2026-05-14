@@ -8,6 +8,27 @@ exports.createOrder = async (req, res) => {
     const { items, totalPrice, city, subCity, woreda, phone, latitude, longitude } = req.body;
     const userId = req.user.id;
 
+    // --- NEW: STOCK VALIDATION & UPDATE STEP ---
+    for (const item of items) {
+      const product = await Product.findByPk(item.id, { transaction: t });
+
+      if (!product) {
+        throw new Error(`Product ${item.name} no longer exists.`);
+      }
+
+      if (product.stock < item.quantity) {
+        // This error will be caught by the catch block and trigger a rollback
+        return res.status(400).json({ 
+          message: `Insufficient stock for ${item.name}. Available: ${product.stock}` 
+        });
+      }
+
+      // Decrement the stock in the database
+      product.stock -= item.quantity;
+      await product.save({ transaction: t });
+    }
+    // --------------------------------------------
+
     // 1. Create the Order
     const order = await Order.create({
       userId,
@@ -40,8 +61,6 @@ exports.createOrder = async (req, res) => {
 
     await t.commit();
 
-    // 4. IMPORTANT: Return the format the frontend expects!
-    // We send back an 'order' object containing the 'id'
     res.status(201).json({ 
       message: "Order created successfully", 
       order: { id: order.id } 
@@ -50,7 +69,10 @@ exports.createOrder = async (req, res) => {
   } catch (error) {
     if (t) await t.rollback();
     console.error("CREATE ORDER ERROR:", error);
-    res.status(500).json({ message: "Failed to create order." });
+    
+    // Provide a specific message if it was a custom error
+    const errorMessage = error.message || "Failed to create order.";
+    res.status(500).json({ message: errorMessage });
   }
 };
 // --- 2. GET A SINGLE ORDER (Corrected nested sorting) ---
