@@ -8,14 +8,13 @@ const AdminProducts = () => {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Form State aligned with your Backend Controller fields
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     stock: '',
     description: '',
     categoryId: '',
-    imageUrl: '', // For plain string URL
+    imageUrl: '', 
   });
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -46,7 +45,7 @@ const AdminProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Use FormData for multipart/form-data (required for files)
+    // Use FormData for Cloudinary upload
     const data = new FormData();
     data.append('name', formData.name);
     data.append('price', formData.price);
@@ -55,17 +54,20 @@ const AdminProducts = () => {
     data.append('categoryId', formData.categoryId);
     
     if (selectedFile) {
-      data.append('image', selectedFile); // Matches req.file in backend
-    } else {
-      data.append('imageUrl', formData.imageUrl); // Fallback to string URL
+      // CRITICAL: Must match your backend's upload.single('images')
+      data.append('images', selectedFile); 
+    } else if (formData.imageUrl) {
+      data.append('imageUrl', formData.imageUrl); 
     }
 
     try {
+      // Authorization headers are usually handled globally by your API service
       const res = await API.post('/products', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
       setProducts([res.data, ...products]);
-      toast.success("Product created!");
+      toast.success("Product saved to Cloudinary!");
       setShowForm(false);
       resetForm();
     } catch (err) {
@@ -94,7 +96,7 @@ const AdminProducts = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Inventory</h1>
-          <p className="text-gray-500">Manage your store products and stock levels</p>
+          <p className="text-gray-500">Manage store items via Cloudinary Secure Storage</p>
         </div>
         <button 
           onClick={() => setShowForm(!showForm)}
@@ -105,40 +107,40 @@ const AdminProducts = () => {
         </button>
       </div>
 
-      {/* Add Product Form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl border border-gray-200 mb-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" name="name" placeholder="Product Name" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="number" name="price" placeholder="Price (e.g. 89.99)" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="number" name="stock" placeholder="Stock Quantity" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="text" name="categoryId" placeholder="Category ID" onChange={handleInputChange} className="p-3 border rounded-xl" />
-          <textarea name="description" placeholder="Description" onChange={handleInputChange} className="p-3 border rounded-xl md:col-span-2" />
+          <input type="text" name="name" value={formData.name} placeholder="Product Name" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="number" name="price" value={formData.price} placeholder="Price" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="number" name="stock" value={formData.stock} placeholder="Stock Quantity" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="text" name="categoryId" value={formData.categoryId} placeholder="Category ID" onChange={handleInputChange} className="p-3 border rounded-xl" />
+          <textarea name="description" value={formData.description} placeholder="Description" onChange={handleInputChange} className="p-3 border rounded-xl md:col-span-2" />
           
           <div className="md:col-span-2 border-2 border-dashed rounded-xl p-4 flex flex-col items-center">
             <input type="file" id="fileInput" onChange={handleFileChange} className="hidden" />
             <label htmlFor="fileInput" className="cursor-pointer flex flex-col items-center text-gray-500">
               <Upload className="mb-2" />
-              <span>{selectedFile ? selectedFile.name : "Upload Image File or enter URL below"}</span>
+              <span>{selectedFile ? selectedFile.name : "Upload image to Cloudinary"}</span>
             </label>
-            <input type="text" name="imageUrl" placeholder="OR Paste Image URL" onChange={handleInputChange} className="mt-4 w-full p-2 border rounded-lg text-sm" />
+            <input type="text" name="imageUrl" value={formData.imageUrl} placeholder="OR Paste External Image URL" onChange={handleInputChange} className="mt-4 w-full p-2 border rounded-lg text-sm" />
           </div>
 
           <button type="submit" className="md:col-span-2 bg-gray-900 text-white p-4 rounded-xl font-bold hover:bg-black transition-all">
-            Save Product to Database
+            Upload Product
           </button>
         </form>
       )}
 
-      {/* Product List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
           <div key={product.id} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
             <div className="aspect-square bg-gray-50 rounded-2xl mb-4 overflow-hidden flex items-center justify-center">
               {product.images ? (
                 <img 
-                  src={product.images.startsWith('/uploads/') ? `http://localhost:5003${product.images}` : product.images} 
+                  // No more localhost checking. Cloudinary links work everywhere!
+                  src={product.images} 
                   alt={product.name} 
                   className="object-cover w-full h-full" 
+                  onError={(e) => { e.target.src = 'https://placehold.co/300'; }}
                 />
               ) : (
                 <Box size={40} className="text-gray-200" />

@@ -5,24 +5,10 @@ import { ShoppingBag, Star } from 'lucide-react';
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  // --- FAIL-SAFE URL LOGIC ---
-  const getImageUrl = () => {
-    if (!product.images) return 'https://placehold.co/300';
-    if (product.images.startsWith('http')) return product.images;
+  // No more complex path cleaning! 
+  // If it's a Cloudinary URL, use it; otherwise, show a placeholder.
+  const imageSrc = product.images || 'https://placehold.co/300';
 
-    // Force Render if the URL in the browser bar is NOT localhost
-    const isProduction = !window.location.hostname.includes('localhost');
-    const base = isProduction 
-      ? 'https://ecommerce-docker-app.onrender.com' 
-      : 'http://localhost:5003';
-
-    // Ensure we don't double up on slashes
-    const cleanImagePath = product.images.startsWith('/') ? product.images : `/${product.images}`;
-    
-    return `${base}${cleanImagePath}`;
-  };
-
-  const imageSrc = getImageUrl();
   const formattedPrice = product.price ? parseFloat(product.price).toFixed(2) : '0.00';
 
   return (
@@ -31,11 +17,13 @@ const ProductCard = ({ product }) => {
         <img 
           src={imageSrc} 
           alt={product.name}
+          // crossOrigin is still good practice for external images
           crossOrigin="anonymous" 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => { e.target.src = 'https://placehold.co/300'; }}
         />
       </div>
+      
       <div className="p-4">
         <div className="flex justify-between items-start mb-1">
           <h3 className="font-bold text-gray-800 text-lg truncate">{product.name}</h3>
@@ -43,7 +31,9 @@ const ProductCard = ({ product }) => {
             <Star size={14} fill="currentColor" className="mr-1" /> 4.5
           </span>
         </div>
+        
         <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+        
         <div className="flex justify-between items-center">
           <span className="text-xl font-black text-gray-900">${formattedPrice}</span>
           <button 

@@ -43,20 +43,23 @@ exports.getAllProducts = async (req, res) => {
 // 2. CREATE PRODUCT (Includes Cache Invalidation)
 exports.createProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, categoryId, imageUrl } = req.body;
-    const finalImage = req.file ? `/uploads/${req.file.filename}` : imageUrl;
+    const { name, price, description, stock, categoryId } = req.body;
+    
+    // Cloudinary provides the full secure URL in req.file.path
+    const imageUrl = req.file ? req.file.path : null; 
 
-    const newProduct = await Product.create({
-      name, description, price: parseFloat(price),
-      stock: parseInt(stock), images: finalImage, categoryId
+    const product = await Product.create({
+      name,
+      price,
+      description,
+      stock,
+      categoryId,
+      images: imageUrl // This will now be: https://res.cloudinary.com/...
     });
 
-    // NEW: Clear cache so the new product shows up immediately
-    await clearProductCache();
-
-    res.status(201).json(newProduct);
+    res.status(201).json(product);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 

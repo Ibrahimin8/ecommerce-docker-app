@@ -28,6 +28,9 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
+    volumes:
+      # CRITICAL: This links your local uploads folder to the container's uploads folder
+      - ./ecommerce-backend/uploads:/app/uploads
     depends_on:
       - db
       - redis
@@ -36,6 +39,9 @@ services:
     build: ./my-shop-frontend
     ports:
       - "5173:5173"
+    environment:
+      # Good practice: Tell your frontend where the backend is
+      - VITE_API_URL=http://localhost:5003/api
     stdin_open: true
     tty: true
     depends_on:
