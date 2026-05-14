@@ -42,42 +42,47 @@ const AdminProducts = () => {
     setSelectedFile(e.target.files[0]);
   };
 
+  const resetForm = () => {
+    setFormData({ name: '', price: '', stock: '', description: '', categoryId: '', imageUrl: '' });
+    setSelectedFile(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Use FormData for Cloudinary upload
+    const loadingToast = toast.loading("Uploading to Cloudinary...");
+
     const data = new FormData();
     data.append('name', formData.name);
-    data.append('price', formData.price);
-    data.append('stock', formData.stock);
+    // Convert strings to numbers to match database types
+    data.append('price', parseFloat(formData.price));
+    data.append('stock', parseInt(formData.stock));
     data.append('description', formData.description);
-    data.append('categoryId', formData.categoryId);
+    data.append('categoryId', parseInt(formData.categoryId));
     
     if (selectedFile) {
-      // CRITICAL: Must match your backend's upload.single('image')
+      // Must be 'image' (singular) to match backend
       data.append('image', selectedFile); 
     } else if (formData.imageUrl) {
       data.append('imageUrl', formData.imageUrl); 
     }
 
     try {
-      // Authorization headers are usually handled globally by your API service
       const res = await API.post('/products', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
+      toast.dismiss(loadingToast);
       setProducts([res.data, ...products]);
-      toast.success("Product saved to Cloudinary!");
+      toast.success("Product saved successfully!");
       setShowForm(false);
       resetForm();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Create failed");
+      toast.dismiss(loadingToast);
+      const msg = err.response?.data?.message || "Check field names or login status";
+      toast.error(msg);
+      console.error("Upload Error Details:", err.response?.data);
     }
-  };
-
-  const resetForm = () => {
-    setFormData({ name: '', price: '', stock: '', description: '', categoryId: '', imageUrl: '' });
-    setSelectedFile(null);
   };
 
   const handleDelete = async (id) => {
@@ -91,69 +96,70 @@ const AdminProducts = () => {
     }
   };
 
+  if (loading) return <div className="p-8 text-center font-bold">Loading Inventory...</div>;
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Inventory</h1>
-          <p className="text-gray-500">Manage store items via Cloudinary Secure Storage</p>
+          <p className="text-gray-500">Secure Cloudinary Storage Management</p>
         </div>
         <button 
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
+          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg"
         >
           {showForm ? <X size={20} /> : <Plus size={20} />}
-          {showForm ? 'Close Form' : 'Add New Product'}
+          {showForm ? 'Close' : 'Add Product'}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl border border-gray-200 mb-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" name="name" value={formData.name} placeholder="Product Name" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="number" name="price" value={formData.price} placeholder="Price" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="number" name="stock" value={formData.stock} placeholder="Stock Quantity" onChange={handleInputChange} required className="p-3 border rounded-xl" />
-          <input type="text" name="categoryId" value={formData.categoryId} placeholder="Category ID" onChange={handleInputChange} className="p-3 border rounded-xl" />
+          <input type="text" name="name" value={formData.name} placeholder="Name" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="number" step="0.01" name="price" value={formData.price} placeholder="Price" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="number" name="stock" value={formData.stock} placeholder="Stock" onChange={handleInputChange} required className="p-3 border rounded-xl" />
+          <input type="number" name="categoryId" value={formData.categoryId} placeholder="Category ID" onChange={handleInputChange} required className="p-3 border rounded-xl" />
           <textarea name="description" value={formData.description} placeholder="Description" onChange={handleInputChange} className="p-3 border rounded-xl md:col-span-2" />
           
           <div className="md:col-span-2 border-2 border-dashed rounded-xl p-4 flex flex-col items-center">
             <input type="file" id="fileInput" onChange={handleFileChange} className="hidden" />
             <label htmlFor="fileInput" className="cursor-pointer flex flex-col items-center text-gray-500">
               <Upload className="mb-2" />
-              <span>{selectedFile ? selectedFile.name : "Upload image to Cloudinary"}</span>
+              <span>{selectedFile ? selectedFile.name : "Select Image File"}</span>
             </label>
-            <input type="text" name="imageUrl" value={formData.imageUrl} placeholder="OR Paste External Image URL" onChange={handleInputChange} className="mt-4 w-full p-2 border rounded-lg text-sm" />
+            <input type="text" name="imageUrl" value={formData.imageUrl} placeholder="Or paste image URL" onChange={handleInputChange} className="mt-4 w-full p-2 border rounded-lg text-sm" />
           </div>
 
           <button type="submit" className="md:col-span-2 bg-gray-900 text-white p-4 rounded-xl font-bold hover:bg-black transition-all">
-            Upload Product
+            Save Product
           </button>
         </form>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <div key={product.id} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-            <div className="aspect-square bg-gray-50 rounded-2xl mb-4 overflow-hidden flex items-center justify-center">
+          <div key={product.id} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="aspect-square bg-gray-50 rounded-2xl mb-4 overflow-hidden">
               {product.images ? (
                 <img 
-                  // No more localhost checking. Cloudinary links work everywhere!
                   src={product.images} 
                   alt={product.name} 
-                  className="object-cover w-full h-full" 
+                  className="object-cover w-full h-full"
                   onError={(e) => { e.target.src = 'https://placehold.co/300'; }}
                 />
               ) : (
-                <Box size={40} className="text-gray-200" />
+                <div className="w-full h-full flex items-center justify-center"><Box size={40} className="text-gray-200" /></div>
               )}
             </div>
-            <h3 className="font-bold text-gray-900">{product.name}</h3>
+            <h3 className="font-bold text-gray-900 truncate">{product.name}</h3>
             <div className="flex justify-between items-center mt-2">
               <p className="text-blue-600 font-black">${parseFloat(product.price).toFixed(2)}</p>
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded-md">Stock: {product.stock}</span>
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600">Qty: {product.stock}</span>
             </div>
             <div className="flex gap-2 mt-4">
-              <button className="flex-1 flex justify-center py-2 bg-gray-50 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all"><Edit size={18} /></button>
-              <button onClick={() => handleDelete(product.id)} className="flex-1 flex justify-center py-2 bg-gray-50 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"><Trash2 size={18} /></button>
+              <button className="flex-1 flex justify-center py-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all"><Edit size={18} /></button>
+              <button onClick={() => handleDelete(product.id)} className="flex-1 flex justify-center py-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-600 transition-all"><Trash2 size={18} /></button>
             </div>
           </div>
         ))}

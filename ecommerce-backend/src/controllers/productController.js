@@ -45,12 +45,15 @@ exports.createProduct = async (req, res) => {
   try {
     const { name, price, description, stock, categoryId } = req.body;
     
-    // Cloudinary provides the full secure URL in req.file.path
-    const imageUrl = req.file ? req.file.path : null; 
+    // Use req.file.path for Cloudinary URL
+    const imageUrl = req.file ? req.file.path : req.body.imageUrl;
+
+    if (!imageUrl) {
+      return res.status(400).json({ message: "Product image is required." });
+    }
 
     const product = await Product.create({
       name,
-      // Use parseFloat and parseInt to ensure the database gets numbers, not strings
       price: parseFloat(price), 
       description,
       stock: parseInt(stock),
@@ -60,8 +63,7 @@ exports.createProduct = async (req, res) => {
 
     res.status(201).json(product);
   } catch (error) {
-    // This will help you see if the error is database-related (e.g., missing categoryId)
-    console.error("Backend Error:", error.message);
+    console.error("Database Error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
