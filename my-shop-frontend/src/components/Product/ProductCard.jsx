@@ -2,28 +2,27 @@ import React, { useContext } from 'react';
 import { CartContext } from '../../context/CartContext';
 import { ShoppingBag, Star } from 'lucide-react';
 
-// CACHE_BUSTER_VERSION: 2.0.1 (Force Vercel to rebuild)
 const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
 
-  const getFinalImageSrc = () => {
+  // --- FAIL-SAFE URL LOGIC ---
+  const getImageUrl = () => {
     if (!product.images) return 'https://placehold.co/300';
     if (product.images.startsWith('http')) return product.images;
 
-    // CLEAN THE PATH
-    const filename = product.images.split('/').pop();
-    
-    // HARD OVERRIDE: 
-    // If the URL in your browser is NOT localhost, we FORCE Render.
-    const isLocal = window.location.hostname === 'localhost';
-    const baseUrl = isLocal 
-      ? 'http://localhost:5003' 
-      : 'https://ecommerce-docker-app.onrender.com';
+    // Force Render if the URL in the browser bar is NOT localhost
+    const isProduction = !window.location.hostname.includes('localhost');
+    const base = isProduction 
+      ? 'https://ecommerce-docker-app.onrender.com' 
+      : 'http://localhost:5003';
 
-    return `${baseUrl}/uploads/${filename}`;
+    // Ensure we don't double up on slashes
+    const cleanImagePath = product.images.startsWith('/') ? product.images : `/${product.images}`;
+    
+    return `${base}${cleanImagePath}`;
   };
 
-  const imageSrc = getFinalImageSrc();
+  const imageSrc = getImageUrl();
   const formattedPrice = product.price ? parseFloat(product.price).toFixed(2) : '0.00';
 
   return (
