@@ -159,3 +159,25 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    const user = await User.findOne({
+      where: {
+        email,
+        otpCode: otp,
+        otpExpires: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired code." });
+    }
+
+    res.status(200).json({ message: "OTP Verified. Proceed to reset." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
