@@ -66,7 +66,7 @@ const Checkout = () => {
     return <Marker position={[formData.latitude, formData.longitude]} />;
   };
 
-  const handlePlaceOrder = async (e) => {
+ const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return toast.error("Your cart is empty");
 
@@ -80,18 +80,27 @@ const Checkout = () => {
           quantity: item.quantity
         })),
         totalPrice: getCartTotal(),
-        ...formData
+        ...formData // Includes city, subCity, woreda, phone, lat, long
       };
 
       const response = await API.post('/orders', orderData);
       
-      // Backend returns: { order: { id: 59 } }
+      // Extract the order ID returned by your backend
       const finalOrderId = response.data.order?.id || response.data.orderId;
 
       if (finalOrderId) {
+        // 1. Clear the cart state (local and DB via context)
         clearCart(); 
-        toast.success("Order Placed Successfully!");
-        navigate(`/my-orders`);
+        
+        toast.success("Order Placed! Please complete payment.");
+
+        // 2. REDIRECT to Payment Instructions instead of My Orders
+        navigate(`/payment-instructions`, { 
+          state: { 
+            orderId: finalOrderId, 
+            totalPrice: getCartTotal() 
+          } 
+        });
       } else {
         throw new Error("Order ID not returned from server");
       }
