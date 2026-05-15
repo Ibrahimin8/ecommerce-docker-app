@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path'); // Added path module for absolute paths
+const path = require('path');
 const swaggerSpec = require('./src/docs/swagger');
 const swaggerUi = require('swagger-ui-express');
 
@@ -38,6 +38,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app');
@@ -58,8 +59,7 @@ app.use(morgan('dev'));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
-// --- STATIC FILES (FIXED WITH ABSOLUTE PATH) ---
-// This ensures the server finds the 'uploads' folder regardless of environment
+// --- STATIC FILES ---
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Landing Route
@@ -69,7 +69,7 @@ app.get('/', (req, res) => {
 
 // --- ROUTES ---
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes); // This contains the forgot-password and reset-password routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -84,6 +84,8 @@ app.get('/health', (req, res) => {
 app.use(errorHandler);
 
 // --- SERVER INITIALIZATION ---
+// Render will automatically inject process.env.PORT. 
+// Do NOT hardcode the port when deploying.
 const PORT = process.env.PORT || 5003; 
 
 const startServer = async () => {
@@ -91,6 +93,8 @@ const startServer = async () => {
         // 1. Connect to Neon PostgreSQL
         await db.sequelize.authenticate();
         console.log('✅ Database connected (Neon)');
+        
+        // Sync models (Careful with {alter: true} in production, but okay for MVP)
         await db.sequelize.sync({ alter: true });
         console.log('✅ Models synced');
 
@@ -100,10 +104,10 @@ const startServer = async () => {
         }
         console.log('✅ Redis connected (Upstash)');
 
-        // 3. Listen
+        // 3. Listen - Binding to 0.0.0.0 is correct for Render
         app.listen(PORT, '0.0.0.0', () => {
-            console.log(`🚀 Production URL: https://ecommerce-docker-app.onrender.com`);
-            console.log(`📖 Documentation: https://ecommerce-docker-app.onrender.com/api-docs`);
+            console.log(`🚀 Server listening on port ${PORT}`);
+            console.log(`🌍 Live URL: https://ecommerce-docker-app.onrender.com`);
         });
     } catch (err) {
         console.error('❌ Server failed to start:', err);

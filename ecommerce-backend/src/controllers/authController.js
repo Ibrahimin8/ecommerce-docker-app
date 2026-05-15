@@ -2,7 +2,11 @@ const { User, Cart } = require('../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const emailService = require('../service/emailService');
+const { Op } = require('sequelize');
+
+// Make sure these paths are correct for your project structure
+const emailService = require('../service/emailService'); 
+const sendEmail = require('../utils/email'); 
 
 // 1. REGISTER
 exports.register = async (req, res) => {
@@ -14,12 +18,11 @@ exports.register = async (req, res) => {
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // Remove the bcrypt.hash line from here!
-    // Just pass the plain password; the Model Hook will hash it for you.
+    // Passing plain password; assuming your User model has a beforeCreate hook to hash it
     const user = await User.create({ 
       name, 
       email, 
-      password, // Plain text here -> Model Hook hashes it once
+      password, 
       role: role || 'user',
       verificationToken,
       isVerified: false 
@@ -38,28 +41,25 @@ exports.register = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 // 2. LOGIN
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // --- ADD THE CODE HERE ---
+    // Check if email is verified before allowing login
     if (!user.isVerified) {
       return res.status(403).json({ 
         message: "Please verify your email first. Check your inbox for the link!" 
       });
     }
-    // -------------------------
 
-    // 2. Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-    // 3. Generate Token
     if (!process.env.JWT_SECRET) {
       console.error("ERROR: JWT_SECRET is missing from .env file");
       return res.status(500).json({ message: "Internal server configuration error" });
@@ -87,37 +87,27 @@ exports.login = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.query;
-    console.log("Token received from Frontend:", token);
+    if (!token) return res.status(400).json({ message: "Token is required" });
 
-    // Find user and explicitly log it to see if Sequelize finds a match
     const user = await User.findOne({ 
-      where: { verificationToken: token.trim() } // Added .trim() to be safe
+      where: { verificationToken: token.trim() } 
     });
 
     if (!user) {
-      console.log("No user found with that token.");
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // Update and Save
     user.isVerified = true;
     user.verificationToken = null; 
-    
     await user.save();
-    console.log("Database updated successfully for:", user.email);
 
     res.status(200).json({ message: "Email verified successfully!" });
   } catch (error) {
-    console.error("CRASH IN VERIFY EMAIL:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-const { User } = require('../models');
-const sendEmail = require('../utils/email');
-const bcrypt = require('bcryptjs');
-const { Op } = require('sequelize');
-
+// 4. FORGOT PASSWORD (OTP)
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -125,11 +115,10 @@ exports.forgotPassword = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "No account found with this email." });
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     
     user.otpCode = otp;
-    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 Min Expiry
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); 
     await user.save();
 
     await sendEmail({
@@ -144,6 +133,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
+// 5. RESET PASSWORD (Verify OTP)
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
@@ -158,7 +148,7 @@ exports.resetPassword = async (req, res) => {
 
     if (!user) return res.status(400).json({ message: "Invalid or expired code." });
 
-    // Hash and update
+    // Hashing manually here as save hooks don't always trigger on all update methods
     user.password = await bcrypt.hash(newPassword, 12);
     user.otpCode = null;
     user.otpExpires = null;
