@@ -112,3 +112,60 @@ exports.verifyEmail = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const { User } = require('../models');
+const sendEmail = require('../utils/email');
+const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) return res.status(404).json({ message: "No account found with this email." });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    user.otpCode = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 Min Expiry
+    await user.save();
+
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset Code",
+      message: `Your verification code is: ${otp}. It will expire in 10 minutes.`
+    });
+
+    res.status(200).json({ message: "OTP sent to your email!" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    const user = await User.findOne({
+      where: {
+        email,
+        otpCode: otp,
+        otpExpires: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) return res.status(400).json({ message: "Invalid or expired code." });
+
+    // Hash and update
+    user.password = await bcrypt.hash(newPassword, 12);
+    user.otpCode = null;
+    user.otpExpires = null;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully!" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

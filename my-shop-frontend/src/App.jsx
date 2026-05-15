@@ -18,6 +18,7 @@ import Checkout from './pages/Checkout';
 import TrackOrder from './pages/TrackOrder';
 import OrderDetails from './pages/OrderDetails';
 import PaymentInstructions from './pages/PaymentInstructions';
+import ResetPassword from './pages/ResetPassword';
 
 // Import Providers
 import { CartProvider } from './context/CartContext';
@@ -37,6 +38,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ResetPassword />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/track-order/:orderId" element={<TrackOrder />} /> 
             <Route path="/payment-instructions" element={<PaymentInstructions />} />
