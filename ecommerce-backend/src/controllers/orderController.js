@@ -16,30 +16,32 @@ const clearProductCache = async () => {
 };
 
 // --- 1. CREATE NEW ORDER ---
+// --- Inside orderController.js ---
+
 exports.createOrder = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { items, totalPrice, city, subCity, woreda, phone, latitude, longitude } = req.body;
-    const userId = req.user.id;
-
+    const { items, totalPrice, city, subCity, woreda, phone } = req.body;
+    
+    // 1. Stock Validation (Keep your existing loop here)
     for (const item of items) {
       const product = await Product.findByPk(item.id, { transaction: t });
-      if (!product) throw new Error(`Product ${item.name} no longer exists.`);
-      
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ 
-          message: `Insufficient stock for ${item.name}. Available: ${product.stock}` 
-        });
+      if (!product || product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${item.name}`);
       }
-
       product.stock -= item.quantity;
       await product.save({ transaction: t });
     }
 
+    // 2. Create Order with 'awaiting_payment' status
     const order = await Order.create({
-      userId, totalPrice, city, subCity, woreda, phone, latitude, longitude, status: 'pending'
+      userId: req.user.id,
+      totalPrice,
+      city, subCity, woreda, phone,
+      status: 'awaiting_payment' // <--- Key Change
     }, { transaction: t });
 
+    // 3. Create Order Items & History
     const orderItems = items.map(item => ({
       orderId: order.id,
       productId: item.id,
@@ -50,19 +52,22 @@ exports.createOrder = async (req, res) => {
     await OrderItem.bulkCreate(orderItems, { transaction: t });
 
     await OrderStatusHistory.create({
-      orderId: order.id, status: 'pending', changedAt: new Date()
+      orderId: order.id,
+      status: 'awaiting_payment',
+      changedAt: new Date()
     }, { transaction: t });
 
     await t.commit();
-    
-    // Clear Redis so Home page shows updated stock/Sold Out status
-    await clearProductCache();
+    await clearProductCache(); // Clear Redis
 
-    res.status(201).json({ message: "Order created successfully", order: { id: order.id } });
+    res.status(201).json({ 
+      message: "Order initiated", 
+      orderId: order.id,
+      totalPrice: totalPrice 
+    });
   } catch (error) {
     if (t) await t.rollback();
-    console.error("CREATE ORDER ERROR:", error);
-    res.status(500).json({ message: error.message || "Failed to create order." });
+    res.status(500).json({ message: error.message });
   }
 };
 

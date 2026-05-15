@@ -52,16 +52,23 @@ export const CartProvider = ({ children }) => {
   };
 
   const checkout = async (orderData) => {
-    try {
-      setLoading(true);
-      const { data } = await API.post('/orders', orderData);
-      await clearCart(); // Wipes DB and Local State
-      return data.order?.id || data.id;
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Checkout failed");
-      return null;
-    } finally { setLoading(false); }
-  };
+  try {
+    setLoading(true);
+    // 1. Post Order
+    const { data } = await API.post('/orders', orderData);
+    
+    // 2. Clear Cart
+    await clearCart(); 
+    
+    // 3. Return data so the UI can navigate to Payment Instructions
+    return data; 
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Checkout failed");
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getCartTotal = () => cartItems.reduce((acc, i) => acc + (parseFloat(i.price) * i.quantity), 0);
 

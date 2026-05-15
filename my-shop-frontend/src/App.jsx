@@ -38,6 +38,7 @@ function App() {
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/track-order/:orderId" element={<TrackOrder />} /> 
+            <Route path="/payment-instructions" element={<PaymentInstructions />} />
             
             {/* Regular User Protected Routes */}
             <Route element={<ProtectedRoute />}>
