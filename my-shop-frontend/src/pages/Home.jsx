@@ -6,18 +6,24 @@ const Home = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // MODIFICATION: Moved fetch logic to a reusable function
+  const fetchProducts = async () => {
+    try {
+      const res = await API.get('/products');
+      setProducts(res.data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await API.get('/products');
-        setProducts(res.data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducts();
+
+    // MODIFICATION: Re-fetch data whenever user returns to the app tab
+    window.addEventListener('focus', fetchProducts);
+    return () => window.removeEventListener('focus', fetchProducts);
   }, []);
 
   if (loading) {
@@ -30,11 +36,7 @@ const Home = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* This 'max-w-7xl mx-auto' is the magic fix. 
-        It centers your content and stops it from hitting the screen edges. 
-      */}
       <div className="max-w-7xl mx-auto px-6 py-12">
-        
         <header className="mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-tight mb-2">
             Explore Item
@@ -49,7 +51,6 @@ const Home = () => {
             <p className="text-gray-400">No products found in the database.</p>
           </div>
         ) : (
-          /* Using a larger gap (gap-10) to make it look expensive */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
