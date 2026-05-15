@@ -19,7 +19,6 @@ const Login = () => {
       toast.success('Welcome back!', { id: loadingToast });
       navigate('/');
     } catch (error) {
-      // Handles the 404 or 401 errors from your screenshot
       const message = error.response?.data?.message || 'Server connection failed';
       toast.error(message, { id: loadingToast });
     }
@@ -34,7 +33,7 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email field with proper icon spacing */}
+          {/* Email field */}
           <div className="relative group">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
             <input 
@@ -46,7 +45,7 @@ const Login = () => {
             />
           </div>
 
-          {/* Password field with proper icon spacing */}
+          {/* Password field */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
             <input 
@@ -56,6 +55,16 @@ const Login = () => {
               placeholder="Password"
               onChange={(e) => setPassword(e.target.value)}
             />
+            
+            {/* FORGOT PASSWORD LINK */}
+            <div className="flex justify-end mt-2 px-1">
+              <Link 
+                to="/forgot-password" 
+                className="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
           <button type="submit" className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
