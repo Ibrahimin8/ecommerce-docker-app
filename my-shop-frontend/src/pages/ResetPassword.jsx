@@ -24,23 +24,25 @@ const ResetPassword = () => {
     } finally { setLoading(false); }
   };
 
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Step 2: Verify OTP via POST request
-      // This will call the router.post('/verify-otp') you added to authRoutes.js
-      await API.post('/auth/verify-otp', { email, otp });
-      
-      toast.success("OTP Verified!");
-      
-      // Step 3: Redirect to the New Password page
-      // We pass email and otp in 'state' so the final page knows who is resetting
-      navigate('/change-password', { state: { email, otp } });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid or expired code.");
-    } finally { setLoading(false); }
-  };
+ const handleVerifyOTP = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // 1. Tell the backend to verify the code
+    await API.post('/auth/verify-otp', { email, otp });
+    
+    toast.success("Identity Verified!");
+
+    // 2. REDIRECT TO CHANGE PASSWORD (NOT LOGIN)
+    // We pass email and otp in 'state' so the next page can use them
+    navigate('/change-password', { state: { email, otp } });
+
+  } catch (err) {
+    toast.error("Invalid code. Please check your email again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-md mx-auto mt-20 p-8 bg-white rounded-[2.5rem] shadow-2xl border border-gray-50">
