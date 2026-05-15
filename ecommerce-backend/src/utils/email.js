@@ -1,25 +1,32 @@
 const Brevo = require('@getbrevo/brevo');
 
 const sendEmail = async (options) => {
-  const apiInstance = new Brevo.TransactionalEmailsApi();
+  // 1. Create the API instance using the correct constructor name
+  let apiInstance = new Brevo.TransactionalEmailsApi();
 
-  // Configure API Key
-  const apiKey = apiInstance.authentications['apiKey'];
+  // 2. Configure the API Key
+  let apiKey = apiInstance.authentications['apiKey'];
   apiKey.apiKey = process.env.BREVO_API_KEY;
 
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
+  // 3. Create the email object
+  let sendSmtpEmail = new Brevo.SendSmtpEmail();
 
   sendSmtpEmail.subject = options.subject;
   sendSmtpEmail.textContent = options.message;
-  sendSmtpEmail.sender = { "name": "TechShop Support", "email": process.env.SENDER_EMAIL };
-  sendSmtpEmail.to = [{ "email": options.email }];
+  sendSmtpEmail.sender = { 
+    name: "TechShop Support", 
+    email: process.env.SENDER_EMAIL 
+  };
+  sendSmtpEmail.to = [{ email: options.email }];
 
   try {
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log("Email sent successfully via Brevo API");
+    // 4. Execute the send command
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Brevo Email sent successfully. Message ID:', data.messageId);
+    return data;
   } catch (error) {
-    console.error("Brevo API Error:", error);
-    throw new Error("Email delivery failed");
+    console.error('❌ Brevo API Error:', error.response ? error.response.body : error.message);
+    throw new Error('Failed to send email via Brevo API.');
   }
 };
 
