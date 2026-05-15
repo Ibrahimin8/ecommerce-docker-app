@@ -1,7 +1,6 @@
 const { Cart, CartItem, Product } = require('../models');
 
-
-// GET current user's cart
+// 1. GET USER'S CART
 exports.getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({
@@ -12,68 +11,65 @@ exports.getCart = async (req, res) => {
         include: [{ model: Product, as: 'product' }]
       }]
     });
-    res.status(200).json(cart);
+
+    // If no cart exists yet, return an empty items array to prevent frontend crashes
+    if (!cart) return res.status(200).json({ items: [] });
+
+    res.status(200).json({ items: cart.items });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// ADD item to cart (This was likely missing!)
+// 2. ADD / UPDATE ITEM (Handles grouping identical items)
 exports.addItemToCart = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
-    
-    // Find or create cart for user
     let [cart] = await Cart.findOrCreate({ where: { userId: req.user.id } });
 
-    // Add item to cart
-    const item = await CartItem.create({
-      cartId: cart.id,
-      productId,
-      quantity: quantity || 1
-    });
+    let item = await CartItem.findOne({ where: { cartId: cart.id, productId } });
 
-    res.status(201).json(item);
+    if (item) {
+      item.quantity += (quantity || 1);
+      if (item.quantity <= 0) {
+        await item.destroy();
+        return res.status(200).json({ message: "Item removed" });
+      }
+      await item.save();
+    } else {
+      item = await CartItem.create({
+        cartId: cart.id,
+        productId,
+        quantity: quantity || 1
+      });
+    }
+    res.status(200).json(item);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// REMOVE item from cart
-//REMOVE SINGLE ITEM FROM CART
+// 3. REMOVE SINGLE PRODUCT TYPE
 exports.removeFromCart = async (req, res) => {
   try {
-    const { productId } = req.params;
-    const userId = req.user.id;
-
-    const cart = await Cart.findOne({ where: { userId } });
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    const deleted = await CartItem.destroy({
-      where: { cartId: cart.id, productId: productId }
-    });
-
-    if (deleted) {
-      res.status(200).json({ message: "Item removed from cart" });
-    } else {
-      res.status(404).json({ message: "Item not found in cart" });
-    }
+    await CartItem.destroy({ where: { cartId: cart.id, productId: req.params.productId } });
+    res.status(200).json({ message: "Item removed" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// 4. CLEAR ENTIRE CART
+// 4. CLEAR CART (Used after successful Checkout)
 exports.clearCart = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const cart = await Cart.findOne({ where: { userId } });
-
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
     if (cart) {
       await CartItem.destroy({ where: { cartId: cart.id } });
     }
-
-    res.status(200).json({ message: "Cart cleared successfully" });
+    res.status(200).json({ message: "Cart cleared" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
