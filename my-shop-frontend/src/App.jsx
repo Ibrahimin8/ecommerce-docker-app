@@ -39,6 +39,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ResetPassword />} />
+            <Route path="/change-password" element={<ChangePassword />} />  
             <Route path="/cart" element={<Cart />} />
             <Route path="/track-order/:orderId" element={<TrackOrder />} /> 
             <Route path="/payment-instructions" element={<PaymentInstructions />} />
@@ -50,7 +51,7 @@ function App() {
               <Route path="/order-details/:id" element={<OrderDetails />} />
               <Route path="/account-settings" element={<AccountSettings />} />
               <Route path="/update-profile" element={<UpdateProfile />} />
-              <Route path="/change-password" element={<ChangePassword />} />  
+             
             </Route>
 
             {/* Admin Only Routes */}

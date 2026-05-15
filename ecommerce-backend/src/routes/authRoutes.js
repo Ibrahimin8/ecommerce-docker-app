@@ -5,10 +5,6 @@ const authController = require('../controllers/authController');
 // Debugging line: If this prints undefined, the import path is wrong
 console.log("Verify function check:", authController.verifyEmail);
 
-
-
-
-
 // Forgot Password - Step 1: Send OTP to Email
 router.post('/forgot-password', authController.forgotPassword);
 
