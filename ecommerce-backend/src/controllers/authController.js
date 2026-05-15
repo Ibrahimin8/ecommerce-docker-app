@@ -134,25 +134,29 @@ exports.forgotPassword = async (req, res) => {
 };
 
 // 5. RESET PASSWORD (Verify OTP)
+// Step 3: Final Reset in authController.js
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-
+    
     const user = await User.findOne({
-      where: {
-        email,
-        otpCode: otp,
-        otpExpires: { [Op.gt]: new Date() }
+      where: { 
+        email, 
+        otpCode: otp, 
+        otpExpires: { [Op.gt]: new Date() } 
       }
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired code." });
+    if (!user) return res.status(400).json({ message: "Session expired. Try again." });
 
-    // Hashing manually here as save hooks don't always trigger on all update methods
-    user.password = await bcrypt.hash(newPassword, 12);
+    // FIX: Set the PLAIN TEXT password. 
+    // The 'beforeUpdate' hook in your User model will detect the change and hash it correctly.
+    user.password = newPassword; 
+    
     user.otpCode = null;
     user.otpExpires = null;
-    await user.save();
+    
+    await user.save(); // This triggers the beforeUpdate hook
 
     res.status(200).json({ message: "Password updated successfully!" });
   } catch (error) {
