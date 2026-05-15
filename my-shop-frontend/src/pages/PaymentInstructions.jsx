@@ -4,6 +4,10 @@ import { ClipboardCheck, ArrowRight, Upload, Loader2, CheckCircle2 } from 'lucid
 import API from '../services/api';
 import { toast } from 'react-hot-toast';
 
+
+const CBE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/en/thumb/8/80/Commercial_Bank_of_Ethiopia_logo.png/220px-Commercial_Bank_of_Ethiopia_logo.png";
+const TELEBIRR_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Telebirr_Logo.png/1200px-Telebirr_Logo.png";
+
 const PaymentInstructions = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -22,6 +26,7 @@ const PaymentInstructions = () => {
 
     setUploading(true);
     try {
+      // This API call sends the file to your backend, which should handle the Cloudinary upload.
       const response = await API.patch(`/orders/${orderId}/upload-receipt`, formData);
       setReceiptUrl(response.data.receiptUrl);
       toast.success("Receipt uploaded successfully!");
@@ -48,10 +53,9 @@ const PaymentInstructions = () => {
         <div className="p-8 space-y-6">
           {/* CBE BANK ACCOUNT */}
           <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white p-2 shadow-sm flex-shrink-0 flex items-center justify-center">
-              {/* Replace src with your CBE logo path */}
+            <div className="w-12 h-12 rounded-xl bg-white p-2 shadow-sm flex-shrink-0 flex items-center justify-center border">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/en/thumb/8/80/Commercial_Bank_of_Ethiopia_logo.png/220px-Commercial_Bank_of_Ethiopia_logo.png" 
+                src={CBE_LOGO_URL}
                 alt="CBE" 
                 className="w-full object-contain"
               />
@@ -66,10 +70,9 @@ const PaymentInstructions = () => {
 
           {/* TELEBIRR ACCOUNT */}
           <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white p-1 shadow-sm flex-shrink-0 flex items-center justify-center">
-              {/* Replace src with your Telebirr logo path */}
+            <div className="w-12 h-12 rounded-xl bg-white p-1 shadow-sm flex-shrink-0 flex items-center justify-center border">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Telebirr_Logo.png/1200px-Telebirr_Logo.png" 
+                src={TELEBIRR_LOGO_URL}
                 alt="Telebirr" 
                 className="w-full object-contain"
               />
