@@ -20,12 +20,13 @@ module.exports = (sequelize, DataTypes) => {
       });
       User.hasMany(models.Review, { 
         foreignKey: 'userId', 
-        as: 'reviews', // Added reviews association
+        as: 'reviews',
         onDelete: 'CASCADE',
         hooks: true 
       });
     }
   }
+
   User.init({
     email: {
       type: DataTypes.STRING,
@@ -53,6 +54,15 @@ module.exports = (sequelize, DataTypes) => {
     verificationToken: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    // --- ADDED FOR FORGOT PASSWORD ---
+    otpCode: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    otpExpires: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,
@@ -65,6 +75,8 @@ module.exports = (sequelize, DataTypes) => {
         }
       },
       beforeUpdate: async (user) => {
+        // This handles password hashing during standard updates 
+        // AND when the user resets their password via OTP
         if (user.changed('password')) {
           const salt = await bcrypt.genSalt(10);
           user.password = await bcrypt.hash(user.password, salt);
@@ -72,5 +84,6 @@ module.exports = (sequelize, DataTypes) => {
       }
     }
   });
+
   return User;
 };
