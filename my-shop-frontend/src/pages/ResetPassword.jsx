@@ -27,21 +27,25 @@ const ResetPassword = () => {
 
   // Logic to verify if the entered OTP is correct
   const handleVerifyOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Calls router.post('/verify-otp')
-      await API.post('/auth/verify-otp', { email, otp });
-      
-      toast.success("Code verified!");
-      // Only proceed to ChangePassword if backend returns 200 OK
-      navigate('/change-password', { state: { email, otp } });
-    } catch (err) {
-      // If code is wrong, stay here and show error
-      toast.error("Incorrect or expired code. Please try again.");
-      setOtp(''); // Optional: clear the field for a fresh attempt
-    } finally { setLoading(false); }
-  };
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // 1. Verify the code with your backend
+    await API.post('/auth/verify-otp', { email, otp });
+    
+    toast.success("Identity Verified!");
+
+    // 2. CHANGE THIS LINE: Redirect to /change-password, NOT /login
+    // We pass the email and otp so the next page knows who is resetting
+    navigate('/change-password', { state: { email, otp } });
+
+  } catch (err) {
+    toast.error("Invalid code. Please try again.");
+    setOtp(''); // Clear the wrong OTP
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[2.5rem] shadow-2xl border border-gray-100">
