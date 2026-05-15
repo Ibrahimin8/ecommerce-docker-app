@@ -231,23 +231,54 @@ exports.getTopSellers = async (req, res) => {
 };
 
 // --- 9. UPDATE ORDER STATUS ---
+// --- Update Status (Admin Side) ---
 exports.updateOrderStatus = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status } = req.body; 
     const order = await Order.findByPk(id);
-    if (!order) { await t.rollback(); return res.status(404).json({ message: "Order not found." }); }
+
+    if (!order) { 
+      await t.rollback(); 
+      return res.status(404).json({ message: "Order not found." }); 
+    }
 
     order.status = status;
     await order.save({ transaction: t });
-    await OrderStatusHistory.create({ orderId: order.id, status: status, changedAt: new Date() }, { transaction: t });
+
+    // Record the status change in history
+    await OrderStatusHistory.create({ 
+      orderId: order.id, 
+      status: status, 
+      changedAt: new Date() 
+    }, { transaction: t });
 
     await t.commit();
-    await clearProductCache();
+    await clearProductCache(); // Redis Sync
+
     res.status(200).json({ message: `Order status updated to ${status}`, order });
   } catch (error) {
     if (t) await t.rollback();
     res.status(500).json({ message: "Failed to update order status." });
+  }
+};
+
+// --- Upload Receipt (User Side) ---
+exports.uploadReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findOne({ where: { id, userId: req.user.id } });
+
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    if (!req.file) return res.status(400).json({ message: "No image uploaded." });
+
+    // Assuming you use middleware like Multer + Cloudinary
+    order.receiptImage = req.file.path; 
+    await order.save();
+
+    res.status(200).json({ message: "Receipt uploaded successfully", receiptImage: order.receiptImage });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
