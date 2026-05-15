@@ -1,23 +1,26 @@
 const { Product, Category } = require('../models');
 const { Op } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
-const redisClient = require('../config/redis'); // Your Redis client
+const redisClient = require('../config/redis'); 
 
 // Helper to clear product-related cache
 const clearProductCache = async () => {
-  const keys = await redisClient.keys('products:*');
-  if (keys.length > 0) await redisClient.del(keys);
+  try {
+    const keys = await redisClient.keys('products:*');
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+      console.log("Redis Product Cache Cleared");
+    }
+  } catch (err) {
+    console.error("Redis Clear Error:", err);
+  }
 };
 
 // 1. VIEW ALL PRODUCTS (With Caching)
 exports.getAllProducts = async (req, res) => {
   try {
     const { categoryId, search } = req.query;
-    // Create a unique cache key based on query params
     const cacheKey = `products:all:cat${categoryId || 'none'}:search${search || 'none'}`;
 
-    // Try to get from Redis
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) return res.status(200).json(JSON.parse(cachedData));
 
@@ -31,7 +34,7 @@ exports.getAllProducts = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Save to Redis for 10 minutes (600 seconds)
+    // Cache for 10 minutes
     await redisClient.setEx(cacheKey, 600, JSON.stringify(products));
     
     res.status(200).json(products);
@@ -40,12 +43,10 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// 2. CREATE PRODUCT (Includes Cache Invalidation)
+// 2. CREATE PRODUCT (Fixed with Cache Invalidation)
 exports.createProduct = async (req, res) => {
   try {
     const { name, price, description, stock, categoryId } = req.body;
-    
-    // Use req.file.path for Cloudinary URL
     const imageUrl = req.file ? req.file.path : req.body.imageUrl;
 
     if (!imageUrl) {
@@ -61,9 +62,11 @@ exports.createProduct = async (req, res) => {
       images: imageUrl 
     });
 
+    // PERMANENT FIX: Clear cache so the new product shows up immediately
+    await clearProductCache();
+
     res.status(201).json(product);
   } catch (error) {
-    console.error("Database Error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -75,9 +78,14 @@ exports.updateProduct = async (req, res) => {
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    await product.update(req.body);
+    // Handle numeric conversions for safety
+    const updateData = { ...req.body };
+    if (updateData.price) updateData.price = parseFloat(updateData.price);
+    if (updateData.stock) updateData.stock = parseInt(updateData.stock);
 
-    // NEW: Clear specific product cache and list cache
+    await product.update(updateData);
+
+    // Clear caches
     await redisClient.del(`products:single:${id}`);
     await clearProductCache();
 
@@ -93,10 +101,9 @@ exports.deleteProduct = async (req, res) => {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // File cleanup logic...
     await product.destroy();
 
-    // NEW: Clear caches
+    // Clear caches
     await redisClient.del(`products:single:${req.params.id}`);
     await clearProductCache();
 
@@ -106,7 +113,7 @@ exports.deleteProduct = async (req, res) => {
   }
 };
 
-// 5. GET SINGLE PRODUCT (With Caching)
+// 5. GET SINGLE PRODUCT
 exports.getProductById = async (req, res) => {
   try {
     const cacheKey = `products:single:${req.params.id}`;
