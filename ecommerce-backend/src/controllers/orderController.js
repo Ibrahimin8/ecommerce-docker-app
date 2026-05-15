@@ -15,15 +15,13 @@ const clearProductCache = async () => {
   }
 };
 
-// --- 1. CREATE NEW ORDER ---
-// --- Inside orderController.js ---
-
+// --- 1. CREATE NEW ORDER (With Map & Awaiting Payment Status) ---
 exports.createOrder = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { items, totalPrice, city, subCity, woreda, phone } = req.body;
+    const { items, totalPrice, city, subCity, woreda, phone, latitude, longitude } = req.body;
     
-    // 1. Stock Validation (Keep your existing loop here)
+    // 1. Stock Validation
     for (const item of items) {
       const product = await Product.findByPk(item.id, { transaction: t });
       if (!product || product.stock < item.quantity) {
@@ -33,12 +31,13 @@ exports.createOrder = async (req, res) => {
       await product.save({ transaction: t });
     }
 
-    // 2. Create Order with 'awaiting_payment' status
+    // 2. Create Order with 'awaiting_payment' status and Map Coordinates
     const order = await Order.create({
       userId: req.user.id,
       totalPrice,
       city, subCity, woreda, phone,
-      status: 'awaiting_payment' // <--- Key Change
+      latitude, longitude, // Added from Leaflet map
+      status: 'awaiting_payment' 
     }, { transaction: t });
 
     // 3. Create Order Items & History
@@ -58,7 +57,7 @@ exports.createOrder = async (req, res) => {
     }, { transaction: t });
 
     await t.commit();
-    await clearProductCache(); // Clear Redis
+    await clearProductCache(); 
 
     res.status(201).json({ 
       message: "Order initiated", 
@@ -99,7 +98,7 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// --- 3. GET ALL ORDERS (Admin) ---
+// --- 3. GET ALL ORDERS (Admin Console) ---
 exports.getAllOrders = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 10 } = req.query;
@@ -128,7 +127,7 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// --- 4. GET MY ORDERS ---
+// --- 4. GET MY ORDERS (User Tracking) ---
 exports.getMyOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
@@ -154,7 +153,12 @@ exports.cancelOrder = async (req, res) => {
 
     if (!order) { await t.rollback(); return res.status(404).json({ message: "Order not found." }); }
     if (order.userId !== req.user.id && req.user.role !== 'admin') { await t.rollback(); return res.status(403).json({ message: "Unauthorized." }); }
-    if (order.status !== 'pending') { await t.rollback(); return res.status(400).json({ message: "Cannot cancel non-pending order." }); }
+    
+    // Only allow cancellation if payment hasn't been verified yet
+    if (order.status !== 'awaiting_payment' && order.status !== 'pending') { 
+      await t.rollback(); 
+      return res.status(400).json({ message: "Cannot cancel order at this stage." }); 
+    }
 
     for (const item of order.items) {
       await Product.increment('stock', { by: item.quantity, where: { id: item.productId }, transaction: t });
@@ -183,7 +187,7 @@ exports.reorder = async (req, res) => {
     const newOrder = await Order.create({
       userId: req.user.id, totalPrice: originalOrder.totalPrice, phone: originalOrder.phone,
       city: originalOrder.city, subCity: originalOrder.subCity, woreda: originalOrder.woreda,
-      latitude: originalOrder.latitude, longitude: originalOrder.longitude, status: 'pending'
+      latitude: originalOrder.latitude, longitude: originalOrder.longitude, status: 'awaiting_payment'
     }, { transaction: t });
 
     const itemsToSave = originalOrder.items.map(item => ({
@@ -191,7 +195,7 @@ exports.reorder = async (req, res) => {
     }));
 
     await OrderItem.bulkCreate(itemsToSave, { transaction: t });
-    await OrderStatusHistory.create({ orderId: newOrder.id, status: 'pending', changedAt: new Date() }, { transaction: t });
+    await OrderStatusHistory.create({ orderId: newOrder.id, status: 'awaiting_payment', changedAt: new Date() }, { transaction: t });
 
     await t.commit();
     await clearProductCache();
@@ -202,10 +206,10 @@ exports.reorder = async (req, res) => {
   }
 };
 
-// --- 7. SALES STATS ---
+// --- 7. SALES STATS (Admin Only) ---
 exports.getSalesStats = async (req, res) => {
   try {
-    const totalRevenue = await Order.sum('totalPrice', { where: { status: 'completed' } });
+    const totalRevenue = await Order.sum('totalPrice', { where: { status: 'complete' } });
     const totalOrders = await Order.count();
     const recentOrders = await Order.findAll({ limit: 5, order: [['createdAt', 'DESC']], include: [{ model: User, attributes: ['name', 'email'] }] });
     res.status(200).json({ stats: { totalRevenue: totalRevenue || 0, totalOrders, recentOrders } });
@@ -214,7 +218,7 @@ exports.getSalesStats = async (req, res) => {
   }
 };
 
-// --- 8. TOP SELLERS ---
+// --- 8. TOP SELLERS (Admin Only) ---
 exports.getTopSellers = async (req, res) => {
   try {
     const topSellers = await OrderItem.findAll({
@@ -230,8 +234,7 @@ exports.getTopSellers = async (req, res) => {
   }
 };
 
-// --- 9. UPDATE ORDER STATUS ---
-// --- Update Status (Admin Side) ---
+// --- 9. UPDATE ORDER STATUS (Admin Verification) ---
 exports.updateOrderStatus = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -247,7 +250,6 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save({ transaction: t });
 
-    // Record the status change in history
     await OrderStatusHistory.create({ 
       orderId: order.id, 
       status: status, 
@@ -255,7 +257,7 @@ exports.updateOrderStatus = async (req, res) => {
     }, { transaction: t });
 
     await t.commit();
-    await clearProductCache(); // Redis Sync
+    await clearProductCache(); 
 
     res.status(200).json({ message: `Order status updated to ${status}`, order });
   } catch (error) {
@@ -264,20 +266,23 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-// --- Upload Receipt (User Side) ---
+// --- 10. UPLOAD RECEIPT (User Side) ---
 exports.uploadReceipt = async (req, res) => {
   try {
     const { id } = req.params;
     const order = await Order.findOne({ where: { id, userId: req.user.id } });
 
     if (!order) return res.status(404).json({ message: "Order not found." });
-    if (!req.file) return res.status(400).json({ message: "No image uploaded." });
+    if (!req.file || !req.file.path) return res.status(400).json({ message: "No image uploaded." });
 
-    // Assuming you use middleware like Multer + Cloudinary
     order.receiptImage = req.file.path; 
     await order.save();
 
-    res.status(200).json({ message: "Receipt uploaded successfully", receiptImage: order.receiptImage });
+    // ALIGNMENT FIX: returning 'receiptUrl' to match frontend state logic
+    res.status(200).json({ 
+      message: "Receipt uploaded successfully", 
+      receiptUrl: order.receiptImage 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
