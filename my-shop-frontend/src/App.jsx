@@ -17,6 +17,7 @@ import AdminOrders from './pages/AdminOrders';
 import Checkout from './pages/Checkout';
 import TrackOrder from './pages/TrackOrder';
 import OrderDetails from './pages/OrderDetails';
+import PaymentInstructions from './pages/PaymentInstructions';
 
 // Import Providers
 import { CartProvider } from './context/CartContext';
