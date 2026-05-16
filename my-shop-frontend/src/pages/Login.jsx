@@ -2,11 +2,12 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react'; // Added Eye and EyeOff
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Visibility State
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -45,16 +46,25 @@ const Login = () => {
             />
           </div>
 
-          {/* Password field */}
+          {/* Password field with Visibility Toggle */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
             <input 
-              type="password" 
+              type={showPassword ? "text" : "password"} // Dynamic switch
               required
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
+              className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
               placeholder="Password"
               onChange={(e) => setPassword(e.target.value)}
             />
+            
+            {/* Eye toggle button */}
+            <button
+              type="button" // Important: avoids validation/form-submission triggers
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
             
             {/* FORGOT PASSWORD LINK */}
             <div className="flex justify-end mt-2 px-1">

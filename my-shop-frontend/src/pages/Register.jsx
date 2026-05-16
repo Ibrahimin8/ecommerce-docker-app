@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'; // Added Eye and EyeOff
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +11,10 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  
+  // Tracking visibility independently for both fields
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const navigate = useNavigate();
 
@@ -28,12 +32,11 @@ const Register = () => {
     const loadingToast = toast.loading('Creating your account...');
 
     try {
-      // FIX: Using the correct route /auth/register
       await API.post('/auth/register', {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        role: 'user'  // Set the role to 'user'
+        role: 'user'
       });
       
       toast.success('Account created! Please login.', { id: loadingToast });
@@ -80,30 +83,44 @@ const Register = () => {
             />
           </div>
 
-          {/* Password Field */}
+          {/* Password Field with Eye Toggle */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
             <input 
               name="password"
-              type="password" 
+              type={showPassword ? "text" : "password"} 
               required
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
+              className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
               placeholder="Create Password"
               onChange={handleChange}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
-          {/* Confirm Password */}
+          {/* Confirm Password with Independent Eye Toggle */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
             <input 
               name="confirmPassword"
-              type="password" 
+              type={showConfirmPassword ? "text" : "password"} 
               required
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
+              className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
               placeholder="Confirm Password"
               onChange={handleChange}
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           <button 
