@@ -6,7 +6,7 @@ const ProductCard = ({ product }) => {
   const { addToCart } = useContext(CartContext);
   const [added, setAdded] = useState(false);
 
-  // 1. DATA ALIGNMENT: 
+ 
   // Ensure we use 'images' plural and handle numeric price strings from DB
   const imageSrc = product.images || 'https://placehold.co/400x400?text=No+Image';
   const formattedPrice = product.price ? parseFloat(product.price).toFixed(2) : '0.00';
