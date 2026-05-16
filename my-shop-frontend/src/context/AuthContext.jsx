@@ -51,10 +51,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 3. Logout Function
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
+ const logout = () => {
+  // 1. Remove the token from local storage to break the session [cite: 36]
+  localStorage.removeItem('token');
+
+  // 2. Clear any persistent Axios/API headers to prevent token reuse
+  // Replace 'API' with the name of your axios instance import
+  if (API.defaults.headers.common['Authorization']) {
+    delete API.defaults.headers.common['Authorization'];
+  }
+
+  // 3. Reset the global user state so the UI reflects a guest status 
+  setUser(null);
+
+  // 4. Provide visual confirmation and redirect the user
+  toast.success("Successfully logged out!");
+  
+  // Navigate to login or home page
+  navigate('/login'); 
+};
 
   // Helper values - Updated isAdmin to handle 'admin' or 'administrator'
   const isCustomer = user?.role === 'user';

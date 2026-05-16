@@ -11,6 +11,8 @@ router.post('/forgot-password', authController.forgotPassword);
 //Step 2 : verify OTP for password reset
 router.post('/verify-otp', authController.verifyOTP);
 
+router.post('/logout', authController.logout);
+
 // Reset Password - Step 3: Verify OTP and Change Password
 router.post('/reset-password', authController.resetPassword);
 
